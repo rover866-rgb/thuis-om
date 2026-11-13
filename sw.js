@@ -1,5 +1,5 @@
 // Bewaart de app zelf, zodat hij ook zonder bereik opent. Verkeersdata komt altijd vers van TomTom.
-var CACHE = "thuis-om-v2";
+var CACHE = "thuis-om-v4";
 var SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", function (e) {

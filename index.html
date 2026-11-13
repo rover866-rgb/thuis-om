@@ -61,6 +61,9 @@ input { font: inherit; color: var(--ink); background: var(--bg); border: 1.5px s
 .mode[aria-pressed="true"] { background: var(--sign); border-color: var(--sign); color: var(--sign-ink); font-weight: 600; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .seg .btn[aria-pressed="true"] { background: var(--sign); border-color: var(--sign); color: var(--sign-ink); }
+.geo-text { margin: 0; }
+.geo-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+#geo-help { display: flex; flex-direction: column; gap: 8px; }
 .from-box { display: flex; flex-direction: column; gap: 8px; }
 .legs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .legs li { display: grid; grid-template-columns: 52px 1fr; gap: 8px; }
@@ -88,6 +91,20 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
       <div class="sign-sub" id="sub"></div>
     </div>
   </div>
+
+  <section id="geo" hidden>
+    <h2>Locatie</h2>
+    <p class="geo-text">Thuis om gebruikt je locatie om de reistijd naar huis te berekenen. Tik op de knop en kies daarna Toestaan.</p>
+    <button class="btn primary" id="geo-allow" type="button">Locatie toestaan</button>
+    <div id="geo-help" hidden>
+      <p class="geo-text"><strong>Locatie is geblokkeerd voor deze app.</strong> Zo zet je hem weer aan:</p>
+      <ul class="geo-list">
+        <li>Android: tik in Chrome op het icoon links van het webadres, kies Machtigingen en zet Locatie op Toestaan.</li>
+        <li>iPhone: open Instellingen, Privacy en beveiliging, Locatievoorzieningen, Safari-websites en kies Bij gebruik van app.</li>
+      </ul>
+      <p class="geo-text">Tik daarna opnieuw op Locatie toestaan. Je kunt ook hieronder bij Vertrekpunt een adres invoeren.</p>
+    </div>
+  </section>
 
   <div class="modes" role="group" aria-label="Vervoermiddel">
     <button class="mode" type="button" data-mode="car" aria-pressed="false"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11"/><rect x="3" y="11" width="18" height="6" rx="2"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>Auto</button>
@@ -155,23 +172,25 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
       <summary>Instellingen</summary>
       <form class="inner" id="form">
         <label for="home">Thuisadres<input id="home" type="text" autocomplete="street-address" placeholder="Straat 1, Plaats" required></label>
-        <label for="key">TomTom API-sleutel<input id="key" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+        <label for="key">Eigen TomTom API-sleutel (niet nodig)<input id="key" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Leeg = ingebouwde sleutel"></label>
         <button class="btn primary" id="save" type="submit">Opslaan</button>
         <p class="hint" id="home-found"></p>
-        <p class="hint">Gratis sleutel aanmaken op <a href="https://developer.tomtom.com/" target="_blank" rel="noopener">developer.tomtom.com</a>. De sleutel en je adres blijven op dit toestel staan.</p>
+        <p class="hint">Je adres blijft op dit toestel staan. Werkt de app niet omdat het daglimiet bereikt is, dan kun je een eigen gratis sleutel aanmaken op <a href="https://developer.tomtom.com/" target="_blank" rel="noopener">developer.tomtom.com</a>.</p>
       </form>
     </details>
   </section>
-  <p class="credit">Auto, fiets en lopen: TomTom. OV: <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous en bronnen</a>, kaartdata © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.</p>
+  <p class="credit">Auto, fiets en lopen: TomTom. OV: <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous en bronnen</a>, kaartdata © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.<br>Contact en broncode: <a href="https://github.com/rover866-rgb/thuis-om" target="_blank" rel="noopener">github.com/rover866-rgb/thuis-om</a></p>
 </main>
 
 <script>
 (function () {
   var KEY = "thuis-om-live-v1";
+  var BUILT_IN_KEY = "Oi0Ko0WDOFj2335id7a2QO88IGP0qIcw";
+  function apiKey() { return cfg.key || BUILT_IN_KEY; }
   var REFRESH_MS = 2 * 60 * 1000;
   var OV_REFRESH_MS = 5 * 60 * 1000;
   var lastOv = 0;
-  var cfg = { key: "", home: "", lat: null, lon: null, label: "", extra: 0, mode: "car", ebike: false, fromMode: "gps", from: "", fromLat: null, fromLon: null, fromLabel: "" };
+  var cfg = { key: "", home: "", lat: null, lon: null, label: "", extra: 0, mode: "car", ebike: false, fromMode: "gps", from: "", fromLat: null, fromLon: null, fromLabel: "", geoOk: false };
   var EBIKE_FACTOR = 0.8; // schatting: elektrische fiets is ongeveer 20% sneller
   var MODES = { car: "auto", bicycle: "fiets", pedestrian: "lopend", transit: "OV" };
   try { var s = JSON.parse(localStorage.getItem(KEY)); if (s) for (var k in cfg) if (k in s) cfg[k] = s[k]; } catch (e) {}
@@ -250,11 +269,21 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
     $("from-found").textContent = addr && cfg.fromLabel ? "Gevonden: " + cfg.fromLabel : "";
   }
 
+  function geoCard(show, denied) { $("geo").hidden = !show; $("geo-help").hidden = !denied; }
+  function checkGeo() {
+    if (cfg.fromMode !== "gps" || !window.isSecureContext || !navigator.geolocation || cfg.geoOk) { geoCard(false); return Promise.resolve(true); }
+    if (!navigator.permissions || !navigator.permissions.query) { geoCard(true, false); return Promise.resolve(false); }
+    return navigator.permissions.query({ name: "geolocation" }).then(function (st) {
+      if (st.state === "granted") { cfg.geoOk = true; save(); geoCard(false); return true; }
+      geoCard(true, st.state === "denied"); return false;
+    }, function () { geoCard(true, false); return false; });
+  }
+
   function locate() {
     if (cfg.fromMode === "address") {
       if (!cfg.from.trim()) return Promise.reject(new Error("Vul een vertrekadres in."));
       if (cfg.fromLat != null) return Promise.resolve({ latitude: cfg.fromLat, longitude: cfg.fromLon });
-      return geocode(cfg.from.trim(), cfg.key).then(function (g) {
+      return geocode(cfg.from.trim(), apiKey()).then(function (g) {
         cfg.fromLat = g.lat; cfg.fromLon = g.lon; cfg.fromLabel = g.label; save(); renderFrom();
         return { latitude: g.lat, longitude: g.lon };
       });
@@ -265,6 +294,7 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
       navigator.geolocation.getCurrentPosition(
         function (p) { resolve(p.coords); },
         function (err) {
+          if (err.code === 1) { cfg.geoOk = false; save(); geoCard(true, true); }
           reject(new Error(err.code === 1
             ? "Geen toestemming voor locatie. Sta locatie toe voor deze pagina in je browserinstellingen."
             : "Je locatie kon niet worden bepaald. Controleer of gps aan staat en probeer opnieuw."));
@@ -289,7 +319,7 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
   function fetchRoute(from) {
     var url = "https://api.tomtom.com/routing/1/calculateRoute/" +
       from.latitude + "," + from.longitude + ":" + cfg.lat + "," + cfg.lon +
-      "/json?traffic=true&travelMode=" + cfg.mode + "&routeType=fastest&key=" + encodeURIComponent(cfg.key);
+      "/json?traffic=true&travelMode=" + cfg.mode + "&routeType=fastest&key=" + encodeURIComponent(apiKey());
     return fetch(url).then(function (res) {
       if (!res.ok) throw new Error(apiError(res));
       return res.json();
@@ -346,12 +376,20 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
   }
 
   function update() {
-    if (!cfg.key || cfg.lat == null) {
+    if (cfg.lat == null) {
       $("setup").open = true;
-      status("Vul bij Instellingen je thuisadres en TomTom API-sleutel in.");
+      status("Vul bij Instellingen je thuisadres in.");
+      checkGeo();
       return;
     }
     var mine = ++seq;
+    checkGeo().then(function (ok) {
+      if (mine !== seq) return;
+      if (ok) run(mine); else status("");
+    });
+  }
+
+  function run(mine) {
     var transit = cfg.mode === "transit";
     if (transit) lastOv = Date.now();
     $("ov-refresh").disabled = true;
@@ -374,6 +412,16 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
   $("bike-normal").addEventListener("click", function () { cfg.ebike = false; save(); renderMode(); showRoute(); });
   $("bike-e").addEventListener("click", function () { cfg.ebike = true; save(); renderMode(); showRoute(); });
   $("ov-refresh").addEventListener("click", update);
+  $("geo-allow").addEventListener("click", function () {
+    navigator.geolocation.getCurrentPosition(
+      function () { cfg.geoOk = true; save(); geoCard(false); update(); },
+      function (err) {
+        if (err.code === 1) { geoCard(true, true); return; }
+        cfg.geoOk = true; save(); geoCard(false); update();
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
+  });
 
   function restart() { route = null; renderMode(); showRoute(); update(); }
   function useAddress() {
@@ -391,11 +439,11 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
 
   $("form").addEventListener("submit", function (e) {
     e.preventDefault();
-    var key = $("key").value.trim(), home = $("home").value.trim();
-    if (!key || !home) return;
+    var own = $("key").value.trim(), key = own || BUILT_IN_KEY, home = $("home").value.trim();
+    if (!home) return;
     $("save").disabled = true; $("home-found").textContent = "Adres opzoeken…";
     geocode(home, key).then(function (g) {
-      cfg.key = key; cfg.home = home; cfg.lat = g.lat; cfg.lon = g.lon; cfg.label = g.label; save();
+      cfg.key = own; cfg.home = home; cfg.lat = g.lat; cfg.lon = g.lon; cfg.label = g.label; save();
       $("home-found").textContent = "Gevonden: " + g.label;
       $("setup").open = false; route = null; renderMode(); showRoute(); update();
     }).catch(function (err) {
