@@ -96,11 +96,13 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
     <h2>Locatie</h2>
     <p class="geo-text">Thuis om gebruikt je locatie om de reistijd naar huis te berekenen. Tik op de knop en kies daarna Toestaan.</p>
     <button class="btn primary" id="geo-allow" type="button">Locatie toestaan</button>
+    <p class="status" id="geo-msg" role="status" hidden></p>
     <div id="geo-help" hidden>
       <p class="geo-text"><strong>Locatie is geblokkeerd voor deze app.</strong> Zo zet je hem weer aan:</p>
       <ul class="geo-list">
         <li>Android: tik in Chrome op het icoon links van het webadres, kies Machtigingen en zet Locatie op Toestaan.</li>
         <li>iPhone: open Instellingen, Privacy en beveiliging, Locatievoorzieningen, Safari-websites en kies Bij gebruik van app.</li>
+        <li>Geopend vanuit WhatsApp, e-mail of een andere app? Open het adres dan in Chrome of Safari zelf; binnen andere apps is locatie vaak uitgeschakeld.</li>
       </ul>
       <p class="geo-text">Tik daarna opnieuw op Locatie toestaan. Je kunt ook hieronder bij Vertrekpunt een adres invoeren.</p>
     </div>
@@ -269,6 +271,13 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
     $("from-found").textContent = addr && cfg.fromLabel ? "Gevonden: " + cfg.fromLabel : "";
   }
 
+  function getPos(ok, fail) {
+    navigator.geolocation.getCurrentPosition(ok, function (err) {
+      if (err.code === 1) return fail(err);
+      navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 });
+    }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 });
+  }
+  function geoMsg(t) { var el = $("geo-msg"); el.hidden = !t; el.textContent = t || ""; }
   function geoCard(show, denied) { $("geo").hidden = !show; $("geo-help").hidden = !denied; }
   function checkGeo() {
     if (cfg.fromMode !== "gps" || !window.isSecureContext || !navigator.geolocation || cfg.geoOk) { geoCard(false); return Promise.resolve(true); }
@@ -291,15 +300,14 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
     return new Promise(function (resolve, reject) {
       if (!window.isSecureContext) return reject(new Error("Locatie werkt alleen op een https-adres. Open de app via het adres waar je hem gehost hebt."));
       if (!navigator.geolocation) return reject(new Error("Deze browser ondersteunt geen locatie."));
-      navigator.geolocation.getCurrentPosition(
+      getPos(
         function (p) { resolve(p.coords); },
         function (err) {
           if (err.code === 1) { cfg.geoOk = false; save(); geoCard(true, true); }
           reject(new Error(err.code === 1
-            ? "Geen toestemming voor locatie. Sta locatie toe voor deze pagina in je browserinstellingen."
-            : "Je locatie kon niet worden bepaald. Controleer of gps aan staat en probeer opnieuw."));
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+            ? "Geen toestemming voor locatie. Zie de uitleg bij Locatie hierboven."
+            : "Je telefoon geeft geen locatie door. Zet locatie (gps) aan in de instellingen van je telefoon en probeer opnieuw."));
+        }
       );
     });
   }
@@ -413,13 +421,21 @@ details .inner { display: flex; flex-direction: column; gap: 12px; }
   $("bike-e").addEventListener("click", function () { cfg.ebike = true; save(); renderMode(); showRoute(); });
   $("ov-refresh").addEventListener("click", update);
   $("geo-allow").addEventListener("click", function () {
-    navigator.geolocation.getCurrentPosition(
-      function () { cfg.geoOk = true; save(); geoCard(false); update(); },
+    var btn = $("geo-allow");
+    if (!navigator.geolocation) { geoMsg("Deze browser ondersteunt geen locatie. Open het adres in Chrome of Safari."); return; }
+    btn.disabled = true; btn.textContent = "Wachten op toestemming…"; geoMsg("");
+    function done() { btn.disabled = false; btn.textContent = "Locatie toestaan"; }
+    getPos(
+      function () { done(); cfg.geoOk = true; save(); geoCard(false); update(); },
       function (err) {
-        if (err.code === 1) { geoCard(true, true); return; }
-        cfg.geoOk = true; save(); geoCard(false); update();
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+        done();
+        if (err.code === 1) {
+          geoCard(true, true);
+          geoMsg("De telefoon heeft de toestemming geweigerd zonder te vragen, of je koos Blokkeren. Volg de stappen hieronder.");
+        } else {
+          geoMsg("Toestemming is gegeven, maar je telefoon geeft geen locatie door. Zet locatie (gps) aan in de instellingen van je telefoon en tik opnieuw.");
+        }
+      }
     );
   });
 
