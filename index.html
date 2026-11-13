@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Thuis om">
+<meta name="theme-color" content="#0b4ea2">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Thuis om</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* Layout: one column, a blue road sign with the arrival time on top, controls below. */
+:root {
+  --bg: #e9edf2; --surface: #ffffff; --ink: #16202c; --muted: #5b6878;
+  --line: #cfd6df; --sign: #0b4ea2; --sign-ink: #ffffff; --accent: #0b4ea2;
+  --warn-bg: #fff3d6; --warn-ink: #5c4100;
+  --font: "Overpass", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e141b; --surface: #18212c; --ink: #e8edf3; --muted: #97a4b3;
+    --line: #2b3745; --sign: #1259b8; --accent: #7fb2f5;
+    --warn-bg: #3a2f10; --warn-ink: #ffe2a0;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.4; }
+main { max-width: 440px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+.sign { background: var(--sign); color: var(--sign-ink); border-radius: 14px; padding: 6px; }
+.sign-inner { border: 3px solid var(--sign-ink); border-radius: 10px; padding: 18px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.sign-label { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.arrival { font-weight: 800; font-size: clamp(72px, 26vw, 112px); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.sign-sub { font-size: 16px; font-variant-numeric: tabular-nums; opacity: .92; min-height: 1.4em; }
+
+.status { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-ink); }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+h2 { margin: 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.facts div { display: flex; flex-direction: column; gap: 2px; }
+.facts dt { font-size: 13px; color: var(--muted); }
+.facts dd { margin: 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.stepper { display: flex; align-items: center; gap: 10px; }
+.stepper output { min-width: 72px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+input { font: inherit; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 8px; padding: 10px; width: 100%; }
+.btn { font: inherit; font-weight: 600; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 8px; padding: 9px 14px; cursor: pointer; }
+.btn.primary { background: var(--sign); border-color: var(--sign); color: var(--sign-ink); padding: 12px; }
+.btn:disabled { opacity: .6; cursor: default; }
+.modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.mode { font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 4px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; }
+.mode[aria-pressed="true"] { background: var(--sign); border-color: var(--sign); color: var(--sign-ink); font-weight: 600; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg .btn[aria-pressed="true"] { background: var(--sign); border-color: var(--sign); color: var(--sign-ink); }
+.from-box { display: flex; flex-direction: column; gap: 8px; }
+.legs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.legs li { display: grid; grid-template-columns: 52px 1fr; gap: 8px; }
+.legs time { font-weight: 600; font-variant-numeric: tabular-nums; }
+.credit { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
+.credit a { color: inherit; }
+.hint { margin: 0; font-size: 13px; color: var(--muted); }
+.hint a { color: var(--accent); }
+details summary { cursor: pointer; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+details[open] summary { margin-bottom: 12px; }
+details .inner { display: flex; flex-direction: column; gap: 12px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="sign">
+    <div class="sign-inner">
+      <div class="sign-label">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+        <span>Thuis om</span>
+      </div>
+      <div class="arrival" id="arrival">--:--</div>
+      <div class="sign-sub" id="sub"></div>
+    </div>
+  </div>
+
+  <div class="modes" role="group" aria-label="Vervoermiddel">
+    <button class="mode" type="button" data-mode="car" aria-pressed="false"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11"/><rect x="3" y="11" width="18" height="6" rx="2"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>Auto</button>
+    <button class="mode" type="button" data-mode="bicycle" aria-pressed="false"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="16" r="4"/><circle cx="18" cy="16" r="4"/><path d="M6 16l4-8h5l3 8"/><path d="M10 8l4 8"/><path d="M9 8h2"/></svg>Fiets</button>
+    <button class="mode" type="button" data-mode="pedestrian" aria-pressed="false"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="1.8"/><path d="M12 8v6"/><path d="M12 14l-3 7"/><path d="M12 14l3 7"/><path d="M8 11l4-3 4 3"/></svg>Lopen</button>
+    <button class="mode" type="button" data-mode="transit" aria-pressed="false"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14"/><path d="M8 21l2-4"/><path d="M16 21l-2-4"/><circle cx="8.5" cy="14" r=".6"/><circle cx="15.5" cy="14" r=".6"/></svg>OV</button>
+  </div>
+
+  <section id="bike" hidden>
+    <h2>Soort fiets</h2>
+    <div class="seg" role="group" aria-label="Soort fiets">
+      <button class="btn" type="button" id="bike-normal" aria-pressed="true">Gewone fiets</button>
+      <button class="btn" type="button" id="bike-e" aria-pressed="false">Elektrische fiets</button>
+    </div>
+    <p class="hint" id="bike-hint"></p>
+  </section>
+
+  <section>
+    <h2>Vertrekpunt</h2>
+    <div class="seg" role="group" aria-label="Vertrekpunt">
+      <button class="btn" type="button" id="from-gps" aria-pressed="false">Huidige locatie</button>
+      <button class="btn" type="button" id="from-addr" aria-pressed="false">Adres invoeren</button>
+    </div>
+    <div class="from-box" id="from-box" hidden>
+      <label for="from">Vertrekadres<input id="from" type="text" autocomplete="off" enterkeyhint="go" placeholder="Straat 1, Plaats"></label>
+      <button class="btn" id="from-go" type="button">Gebruik dit adres</button>
+      <p class="hint" id="from-found"></p>
+    </div>
+  </section>
+
+  <p class="status" id="status" role="status" hidden></p>
+
+  <section id="ov" hidden>
+    <h2>Eerstvolgende OV-reis</h2>
+    <ol class="legs" id="legs"></ol>
+    <button class="btn primary" id="ov-refresh" type="button">Nu bijwerken</button>
+    <p class="hint" id="ov-updated"></p>
+    <p class="hint"><a id="ov-link" target="_blank" rel="noopener">Bekijk deze reis in Google Maps</a></p>
+  </section>
+
+  <section id="info" hidden>
+    <dl class="facts">
+      <div><dt>Reistijd</dt><dd id="f-time">–</dd></div>
+      <div><dt>Vertraging</dt><dd id="f-delay">–</dd></div>
+      <div><dt>Afstand</dt><dd id="f-dist">–</dd></div>
+    </dl>
+    <button class="btn primary" id="refresh" type="button">Nu bijwerken</button>
+    <p class="hint" id="updated"></p>
+  </section>
+
+  <section>
+    <h2>Extra tijd</h2>
+    <div class="row">
+      <span>Tanken, boodschap</span>
+      <div class="stepper">
+        <button class="btn" id="x-min" type="button" aria-label="5 minuten minder">−5</button>
+        <output id="x-out">0 min</output>
+        <button class="btn" id="x-plus" type="button" aria-label="5 minuten meer">+5</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <details id="setup">
+      <summary>Instellingen</summary>
+      <form class="inner" id="form">
+        <label for="home">Thuisadres<input id="home" type="text" autocomplete="street-address" placeholder="Straat 1, Plaats" required></label>
+        <label for="key">TomTom API-sleutel<input id="key" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+        <button class="btn primary" id="save" type="submit">Opslaan</button>
+        <p class="hint" id="home-found"></p>
+        <p class="hint">Gratis sleutel aanmaken op <a href="https://developer.tomtom.com/" target="_blank" rel="noopener">developer.tomtom.com</a>. De sleutel en je adres blijven op dit toestel staan.</p>
+      </form>
+    </details>
+  </section>
+  <p class="credit">Auto, fiets en lopen: TomTom. OV: <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous en bronnen</a>, kaartdata © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.</p>
+</main>
+
+<script>
+(function () {
+  var KEY = "thuis-om-live-v1";
+  var REFRESH_MS = 2 * 60 * 1000;
+  var OV_REFRESH_MS = 5 * 60 * 1000;
+  var lastOv = 0;
+  var cfg = { key: "", home: "", lat: null, lon: null, label: "", extra: 0, mode: "car", ebike: false, fromMode: "gps", from: "", fromLat: null, fromLon: null, fromLabel: "" };
+  var EBIKE_FACTOR = 0.8; // schatting: elektrische fiets is ongeveer 20% sneller
+  var MODES = { car: "auto", bicycle: "fiets", pedestrian: "lopend", transit: "OV" };
+  try { var s = JSON.parse(localStorage.getItem(KEY)); if (s) for (var k in cfg) if (k in s) cfg[k] = s[k]; } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {} }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit", hour12: false });
+  var route = null;      // { secs, delay, meters, at }
+  var seq = 0;
+
+  function dur(m) {
+    var h = Math.floor(m / 60), r = m % 60;
+    return h ? h + " u" + (r ? " " + r + " min" : "") : r + " min";
+  }
+  var WALK_KMH = 4.5;
+  function secs() {
+    if (!route) return 0;
+    if (cfg.mode === "pedestrian" && route.meters) return Math.round(route.meters / (WALK_KMH * 1000 / 3600));
+    return Math.round(route.secs * (cfg.mode === "bicycle" && cfg.ebike ? EBIKE_FACTOR : 1));
+  }
+  function modeLabel() { return cfg.mode === "bicycle" && cfg.ebike ? "e-bike" : MODES[cfg.mode]; }
+  function status(msg) { var el = $("status"); el.hidden = !msg; el.textContent = msg || ""; }
+
+  function tick() {
+    $("x-out").textContent = (cfg.extra > 0 ? "+" : "") + cfg.extra + " min";
+    if (!route) { $("arrival").textContent = "--:--"; $("sub").textContent = ""; return; }
+    var now = new Date(), arr, text;
+    if (route.arrive) {
+      arr = new Date(route.arrive + cfg.extra * 60000);
+      var mins = Math.round((route.arrive - route.depart) / 60000);
+      text = "Vertrek " + fmt.format(new Date(route.depart)) + " · " + dur(mins) + " OV · " +
+        (route.transfers === 0 ? "geen overstap" : route.transfers === 1 ? "1 overstap" : route.transfers + " overstappen");
+      if (cfg.mode === "transit" && route.depart < now.getTime() - 60000 && now.getTime() - lastOv > 60000) update();
+    } else {
+      var total = Math.round(secs() / 60) + cfg.extra;
+      arr = new Date(now.getTime() + total * 60000);
+      text = "Vertrek nu " + fmt.format(now) + " · " + dur(total) + " " + modeLabel();
+    }
+    $("arrival").textContent = fmt.format(arr);
+    $("sub").textContent = text + (arr.getDate() !== now.getDate() ? " · morgen" : "");
+  }
+
+  function showRoute() {
+    $("info").hidden = !route || cfg.mode === "transit";
+    if (!route) { tick(); return; }
+    if (cfg.mode === "transit") {
+      var ol = $("legs"); ol.textContent = "";
+      (route.legs || []).forEach(function (l) {
+        var li = document.createElement("li"), t = document.createElement("time"), d = document.createElement("span");
+        t.textContent = fmt.format(new Date(l.start)); d.textContent = l.text;
+        li.appendChild(t); li.appendChild(d); ol.appendChild(li);
+      });
+      $("ov-updated").textContent = "Bijgewerkt om " + fmt.format(new Date(route.at)) + ". Ververst elke 5 minuten.";
+      tick(); return;
+    }
+    $("f-time").textContent = dur(Math.round(secs() / 60));
+    var d = Math.round(route.delay / 60);
+    $("f-delay").textContent = cfg.mode !== "car" ? "n.v.t." : d > 0 ? "+" + d + " min" : "geen";
+    $("f-dist").textContent = (route.meters / 1000).toFixed(route.meters < 10000 ? 1 : 0).replace(".", ",") + " km";
+    $("updated").textContent = (cfg.mode === "car" ? "Verkeer" : "Route") + " bijgewerkt om " + fmt.format(new Date(route.at)) + ". Ververst elke 2 minuten."
+      + (cfg.mode === "pedestrian" ? " Gerekend met 4,5 km/u." : "");
+    tick();
+  }
+
+  function apiError(res) {
+    if (res.status === 401 || res.status === 403) return "TomTom weigert de API-sleutel. Controleer de sleutel bij Instellingen.";
+    if (res.status === 429) return "Het gratis daglimiet van TomTom is bereikt. Probeer het morgen opnieuw.";
+    return "TomTom gaf een fout (" + res.status + "). Probeer het zo opnieuw.";
+  }
+
+  function renderFrom() {
+    var addr = cfg.fromMode === "address";
+    $("from-gps").setAttribute("aria-pressed", String(!addr));
+    $("from-addr").setAttribute("aria-pressed", String(addr));
+    $("from-box").hidden = !addr;
+    $("from-found").textContent = addr && cfg.fromLabel ? "Gevonden: " + cfg.fromLabel : "";
+  }
+
+  function locate() {
+    if (cfg.fromMode === "address") {
+      if (!cfg.from.trim()) return Promise.reject(new Error("Vul een vertrekadres in."));
+      if (cfg.fromLat != null) return Promise.resolve({ latitude: cfg.fromLat, longitude: cfg.fromLon });
+      return geocode(cfg.from.trim(), cfg.key).then(function (g) {
+        cfg.fromLat = g.lat; cfg.fromLon = g.lon; cfg.fromLabel = g.label; save(); renderFrom();
+        return { latitude: g.lat, longitude: g.lon };
+      });
+    }
+    return new Promise(function (resolve, reject) {
+      if (!window.isSecureContext) return reject(new Error("Locatie werkt alleen op een https-adres. Open de app via het adres waar je hem gehost hebt."));
+      if (!navigator.geolocation) return reject(new Error("Deze browser ondersteunt geen locatie."));
+      navigator.geolocation.getCurrentPosition(
+        function (p) { resolve(p.coords); },
+        function (err) {
+          reject(new Error(err.code === 1
+            ? "Geen toestemming voor locatie. Sta locatie toe voor deze pagina in je browserinstellingen."
+            : "Je locatie kon niet worden bepaald. Controleer of gps aan staat en probeer opnieuw."));
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+      );
+    });
+  }
+
+  function geocode(address, key) {
+    var url = "https://api.tomtom.com/search/2/geocode/" + encodeURIComponent(address) + ".json?limit=1&language=nl-NL&key=" + encodeURIComponent(key);
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error(apiError(res));
+      return res.json();
+    }).then(function (data) {
+      var r = data.results && data.results[0];
+      if (!r) throw new Error("Adres niet gevonden. Vul straat, huisnummer en plaats in.");
+      return { lat: r.position.lat, lon: r.position.lon, label: (r.address && r.address.freeformAddress) || address };
+    });
+  }
+
+  function fetchRoute(from) {
+    var url = "https://api.tomtom.com/routing/1/calculateRoute/" +
+      from.latitude + "," + from.longitude + ":" + cfg.lat + "," + cfg.lon +
+      "/json?traffic=true&travelMode=" + cfg.mode + "&routeType=fastest&key=" + encodeURIComponent(cfg.key);
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error(apiError(res));
+      return res.json();
+    }).then(function (data) {
+      var sum = data.routes && data.routes[0] && data.routes[0].summary;
+      if (!sum) throw new Error("Geen route gevonden vanaf je huidige locatie.");
+      return { secs: sum.travelTimeInSeconds, delay: sum.trafficDelayInSeconds || 0, meters: sum.lengthInMeters, at: Date.now() };
+    });
+  }
+
+  var LEG = { WALK: "Lopen", BIKE: "Fiets", BUS: "Bus", COACH: "Bus", TRAM: "Tram", SUBWAY: "Metro", METRO: "Metro", FERRY: "Veerboot" };
+  function legText(l) {
+    var to = l.to && l.to.name;
+    if (!to || to === "END") to = "huis";
+    if (l.mode === "WALK") return "Lopen naar " + to;
+    var kind = LEG[l.mode] || (/RAIL|SUBURBAN|LONG_DISTANCE/.test(l.mode || "") ? "Trein" : "OV");
+    var name = l.displayName || l.routeShortName || "";
+    return (kind + " " + name).trim() + " naar " + to;
+  }
+
+  function fetchTransit(from) {
+    var url = "https://api.transitous.org/api/v5/plan?fromPlace=" + from.latitude + "," + from.longitude +
+      "&toPlace=" + cfg.lat + "," + cfg.lon + "&detailedTransfers=false";
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error(res.status === 429
+        ? "Transitous krijgt te veel verzoeken. Probeer het over een paar minuten opnieuw."
+        : "De OV-planner gaf een fout (" + res.status + "). Probeer het zo opnieuw.");
+      return res.json();
+    }).then(function (data) {
+      var best = null;
+      (data.itineraries || []).forEach(function (it) {
+        var end = Date.parse(it.endTime), start = Date.parse(it.startTime);
+        if (isNaN(end) || isNaN(start)) return;
+        if (!best || end < best.arrive) best = { arrive: end, depart: start, transfers: it.transfers || 0, it: it };
+      });
+      if (!best) throw new Error("Geen OV-reis gevonden vanaf je huidige locatie.");
+      return {
+        arrive: best.arrive, depart: best.depart, transfers: best.transfers, at: Date.now(),
+        legs: (best.it.legs || []).map(function (l) { return { start: Date.parse(l.startTime), text: legText(l) }; })
+      };
+    });
+  }
+
+  function renderMode() {
+    var btns = document.querySelectorAll(".mode");
+    for (var i = 0; i < btns.length; i++) btns[i].setAttribute("aria-pressed", String(btns[i].getAttribute("data-mode") === cfg.mode));
+    $("bike").hidden = cfg.mode !== "bicycle";
+    $("bike-normal").setAttribute("aria-pressed", String(!cfg.ebike));
+    $("bike-e").setAttribute("aria-pressed", String(!!cfg.ebike));
+    $("bike-hint").textContent = cfg.ebike ? "Schatting: 20% sneller dan de fietstijd van TomTom." : "Fietstijd volgens TomTom.";
+    var ov = cfg.mode === "transit";
+    $("ov").hidden = !ov || !route || !route.arrive;
+    if (cfg.lat != null) $("ov-link").href = "https://www.google.com/maps/dir/?api=1&travelmode=transit&destination=" + cfg.lat + "," + cfg.lon;
+  }
+
+  function update() {
+    if (!cfg.key || cfg.lat == null) {
+      $("setup").open = true;
+      status("Vul bij Instellingen je thuisadres en TomTom API-sleutel in.");
+      return;
+    }
+    var mine = ++seq;
+    var transit = cfg.mode === "transit";
+    if (transit) lastOv = Date.now();
+    $("ov-refresh").disabled = true;
+    $("refresh").disabled = true;
+    if (!route) status("Locatie en route ophalen…");
+    locate().then(transit ? fetchTransit : fetchRoute).then(function (r) {
+      if (mine !== seq) return;
+      route = r; status(""); renderMode(); showRoute();
+    }).catch(function (e) {
+      if (mine !== seq) return;
+      status(e instanceof TypeError ? "Geen verbinding met " + (transit ? "de OV-planner" : "TomTom") + ". Controleer je internet." : e.message);
+    }).then(function () { if (mine === seq) { $("refresh").disabled = false; $("ov-refresh").disabled = false; } });
+  }
+
+  var modeBtns = document.querySelectorAll(".mode");
+  for (var i = 0; i < modeBtns.length; i++) modeBtns[i].addEventListener("click", function () {
+    cfg.mode = this.getAttribute("data-mode"); save();
+    route = null; renderMode(); showRoute(); update();
+  });
+  $("bike-normal").addEventListener("click", function () { cfg.ebike = false; save(); renderMode(); showRoute(); });
+  $("bike-e").addEventListener("click", function () { cfg.ebike = true; save(); renderMode(); showRoute(); });
+  $("ov-refresh").addEventListener("click", update);
+
+  function restart() { route = null; renderMode(); showRoute(); update(); }
+  function useAddress() {
+    var v = $("from").value.trim();
+    if (v !== cfg.from || cfg.fromLat == null) { cfg.from = v; cfg.fromLat = null; cfg.fromLon = null; cfg.fromLabel = ""; }
+    save(); renderFrom(); restart();
+  }
+  $("from-gps").addEventListener("click", function () { cfg.fromMode = "gps"; save(); renderFrom(); restart(); });
+  $("from-addr").addEventListener("click", function () {
+    cfg.fromMode = "address"; save(); renderFrom();
+    if (cfg.from.trim()) restart(); else { route = null; renderMode(); showRoute(); $("from").focus(); }
+  });
+  $("from-go").addEventListener("click", useAddress);
+  $("from").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); useAddress(); } });
+
+  $("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var key = $("key").value.trim(), home = $("home").value.trim();
+    if (!key || !home) return;
+    $("save").disabled = true; $("home-found").textContent = "Adres opzoeken…";
+    geocode(home, key).then(function (g) {
+      cfg.key = key; cfg.home = home; cfg.lat = g.lat; cfg.lon = g.lon; cfg.label = g.label; save();
+      $("home-found").textContent = "Gevonden: " + g.label;
+      $("setup").open = false; route = null; renderMode(); showRoute(); update();
+    }).catch(function (err) {
+      $("home-found").textContent = err instanceof TypeError ? "Geen verbinding met TomTom. Controleer je internet." : err.message;
+    }).then(function () { $("save").disabled = false; });
+  });
+
+  $("refresh").addEventListener("click", update);
+  $("x-min").addEventListener("click", function () { cfg.extra = Math.max(0, cfg.extra - 5); save(); tick(); });
+  $("x-plus").addEventListener("click", function () { cfg.extra = Math.min(240, cfg.extra + 5); save(); tick(); });
+
+  $("home").value = cfg.home; $("key").value = cfg.key; $("from").value = cfg.from;
+  if (cfg.fromMode !== "gps" && cfg.fromMode !== "address") cfg.fromMode = "gps";
+  renderFrom();
+  if (cfg.label) $("home-found").textContent = "Gevonden: " + cfg.label;
+  if (!MODES[cfg.mode]) cfg.mode = "car";
+  renderMode(); tick(); update();
+  setInterval(tick, 1000);
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
+  setInterval(function () { if (!document.hidden && cfg.mode !== "transit") update(); }, REFRESH_MS);
+  setInterval(function () { if (!document.hidden && cfg.mode === "transit") update(); }, OV_REFRESH_MS);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && (!route || Date.now() - route.at > (cfg.mode === "transit" ? OV_REFRESH_MS : 60000))) update();
+  });
+})();
+</script>
+</body>
+</html>
